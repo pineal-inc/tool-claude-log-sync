@@ -10,6 +10,7 @@ export interface ClaudeMessage {
 
 export interface ClaudeSession {
   filePath: string;
+  projectName: string;
   messages: ClaudeMessage[];
   lastModified: Date;
 }
@@ -83,7 +84,30 @@ export function parseSessionFile(filePath: string): ClaudeMessage[] {
   }
 }
 
-export function findSessionFiles(projectPath?: string): string[] {
+export function extractProjectName(sessionFilePath: string): string {
+  const projectDir = path.dirname(sessionFilePath);
+  const projectHash = path.basename(projectDir);
+
+  const parts = projectHash.split("-").filter((p) => p.length > 0);
+
+  let startIndex = 0;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].toLowerCase() === "users" || i < 2) {
+      startIndex = i + 1;
+    } else {
+      break;
+    }
+  }
+
+  const projectParts = parts.slice(startIndex);
+  if (projectParts.length === 0) {
+    return "default";
+  }
+
+  return projectParts.join("-").toLowerCase() || "default";
+}
+
+export function findSessionFiles(): string[] {
   const claudeDir = path.join(os.homedir(), ".claude", "projects");
 
   if (!fs.existsSync(claudeDir)) {
@@ -120,11 +144,7 @@ export function findSessionFiles(projectPath?: string): string[] {
     }
   }
 
-  if (projectPath && fs.existsSync(projectPath)) {
-    searchDir(projectPath);
-  } else {
-    searchDir(claudeDir);
-  }
+  searchDir(claudeDir);
 
   // Sort by modification time, newest first
   sessionFiles.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
@@ -132,8 +152,8 @@ export function findSessionFiles(projectPath?: string): string[] {
   return sessionFiles.map((f) => f.path);
 }
 
-export function getRecentSessions(projectPath?: string, limit = 5): ClaudeSession[] {
-  const files = findSessionFiles(projectPath);
+export function getRecentSessions(limit = 5): ClaudeSession[] {
+  const files = findSessionFiles();
   const sessions: ClaudeSession[] = [];
 
   for (const filePath of files.slice(0, limit)) {
@@ -142,6 +162,7 @@ export function getRecentSessions(projectPath?: string, limit = 5): ClaudeSessio
       const stats = fs.statSync(filePath);
       sessions.push({
         filePath,
+        projectName: extractProjectName(filePath),
         messages,
         lastModified: stats.mtime,
       });
