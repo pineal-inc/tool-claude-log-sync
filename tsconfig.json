@@ -1,19 +1,18 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "Raycast Extension",
   "compilerOptions": {
-    "lib": ["ES2021", "DOM"],
+    "lib": ["ES2021"],
     "module": "CommonJS",
     "target": "ES2021",
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "strict": false,
-    "noImplicitAny": false,
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "react-jsx",
-    "outDir": "dist"
+    "outDir": "dist",
+    "declaration": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

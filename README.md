@@ -1,41 +1,48 @@
-# Claude Obsidian Sync
+# Claude Log Sync
 
-Raycast extension to automatically sync Claude Code conversations to Obsidian.
-
-## Features
-
-- **Menu Bar Status**: Shows sync status and runs background sync every minute
-- **Manual Sync**: Instantly sync conversations with a command
-- **View Conversations**: Browse recent Claude Code conversations directly in Raycast
+CLI tool to export Claude Code conversations to Markdown files.
 
 ## Installation
 
-1. Clone this repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Import to Raycast:
-   ```bash
-   npm run dev
-   ```
+```bash
+# Clone and install
+git clone https://github.com/your-username/claude-log-sync.git
+cd claude-log-sync
+npm install
+npm run build
 
-## Configuration
+# Or install globally
+npm install -g .
+```
 
-Set these preferences in Raycast:
+## Usage
 
-| Preference | Description | Required |
-|------------|-------------|----------|
-| Obsidian Vault Path | Path to your Obsidian vault's claude folder (e.g., `~/obsidian/claude`) | Yes |
-| Claude Project Path | Path to specific Claude Code project directory | No |
-| Auto Git Commit | Automatically commit changes after sync | No (default: true) |
+```bash
+# Basic usage
+claude-log-sync ~/logs/claude
+
+# With specific project
+claude-log-sync ~/logs/claude --project ~/.claude/projects/my-project
+
+# Without auto git commit
+claude-log-sync ~/logs/claude --no-git
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output <path>` | Output directory for markdown files |
+| `-p, --project <path>` | Path to specific Claude Code project directory |
+| `--no-git` | Disable automatic git commit after sync |
+| `-h, --help` | Show help message |
 
 ## How It Works
 
-1. The extension monitors `~/.claude/projects/` for active session files
+1. Monitors `~/.claude/projects/` for active session files
 2. Parses JSONL session files to extract user and assistant messages
 3. Filters out system messages and noise
-4. Saves conversations to Obsidian as daily markdown files (e.g., `2026年1月14日.md`)
+4. Saves conversations as daily markdown files (e.g., `2026年1月14日.md`)
 5. Optionally commits changes to git
 
 ## Output Format
@@ -48,9 +55,18 @@ Set these preferences in Raycast:
 **Claude**: Hello! How can I help you today?
 ```
 
+## Automation
+
+You can set up a cron job or launchd to run this periodically:
+
+```bash
+# Run every minute (crontab -e)
+* * * * * /path/to/claude-log-sync ~/logs/claude
+```
+
 ## Credits
 
-Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on syncing Claude Code conversations to Obsidian.
+Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on syncing Claude Code conversations.
 
 ## License
 

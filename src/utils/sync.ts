@@ -16,12 +16,12 @@ export interface SyncState {
 
 const STATE_FILE = ".claude-sync-state.json";
 
-function getStateFilePath(obsidianDir: string): string {
-  return path.join(obsidianDir, STATE_FILE);
+function getStateFilePath(outputDir: string): string {
+  return path.join(outputDir, STATE_FILE);
 }
 
-export function loadSyncState(obsidianDir: string): SyncState {
-  const stateFile = getStateFilePath(obsidianDir);
+export function loadSyncState(outputDir: string): SyncState {
+  const stateFile = getStateFilePath(outputDir);
   try {
     if (fs.existsSync(stateFile)) {
       const content = fs.readFileSync(stateFile, "utf-8");
@@ -33,8 +33,8 @@ export function loadSyncState(obsidianDir: string): SyncState {
   return { lastSyncedLines: {} };
 }
 
-export function saveSyncState(obsidianDir: string, state: SyncState): void {
-  const stateFile = getStateFilePath(obsidianDir);
+export function saveSyncState(outputDir: string, state: SyncState): void {
+  const stateFile = getStateFilePath(outputDir);
   try {
     fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
   } catch {
@@ -64,16 +64,16 @@ function formatMessagesToMarkdown(messages: ClaudeMessage[]): string {
   return lines.join("\n");
 }
 
-export function syncToObsidian(
+export function syncToOutput(
   sessionFilePath: string,
   allMessages: ClaudeMessage[],
-  obsidianDir: string,
+  outputDir: string,
   autoGitCommit: boolean
 ): SyncResult {
   try {
     // Ensure directory exists
-    if (!fs.existsSync(obsidianDir)) {
-      fs.mkdirSync(obsidianDir, { recursive: true });
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
 
     // Filter to today's messages
@@ -87,7 +87,7 @@ export function syncToObsidian(
     }
 
     // Load sync state
-    const state = loadSyncState(obsidianDir);
+    const state = loadSyncState(outputDir);
     const lastSyncedLine = state.lastSyncedLines[sessionFilePath] || 0;
 
     // Get the current line count of the session file
@@ -106,7 +106,7 @@ export function syncToObsidian(
     // Calculate new messages to append
     // This is approximate - we sync all today's messages if there are new lines
     const today = formatDateJapanese(new Date());
-    const outputFile = path.join(obsidianDir, `${today}.md`);
+    const outputFile = path.join(outputDir, `${today}.md`);
 
     // Create file with header if it doesn't exist
     let existingContent = "";
@@ -125,12 +125,12 @@ export function syncToObsidian(
 
     // Update sync state
     state.lastSyncedLines[sessionFilePath] = currentLineCount;
-    saveSyncState(obsidianDir, state);
+    saveSyncState(outputDir, state);
 
     // Git commit if enabled
     if (autoGitCommit) {
       try {
-        execSync(`cd "${obsidianDir}" && git add "${outputFile}" && git commit -m "Claude: ${today} (auto)" 2>/dev/null`, {
+        execSync(`cd "${outputDir}" && git add "${outputFile}" && git commit -m "Claude: ${today} (auto)" 2>/dev/null`, {
           encoding: "utf-8",
           stdio: "pipe",
         });
