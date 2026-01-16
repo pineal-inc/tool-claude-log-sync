@@ -8,6 +8,16 @@ export interface ClaudeMessage {
   timestamp: string;
 }
 
+export interface FileIndex {
+  mtime: number;
+  size: number;
+}
+
+export interface ScanIndex {
+  files: Record<string, FileIndex>;
+  lastScan: number;
+}
+
 export interface ClaudeSession {
   filePath: string;
   projectName: string;
@@ -107,14 +117,17 @@ export function extractProjectName(sessionFilePath: string): string {
   return projectParts.join("-").toLowerCase() || "default";
 }
 
-export function findSessionFiles(): string[] {
-  const claudeDir = path.join(os.homedir(), ".claude", "projects");
+export function findSessionFiles(projectPath?: string): string[] {
+  const claudeDir = projectPath || path.join(os.homedir(), ".claude", "projects");
 
   if (!fs.existsSync(claudeDir)) {
     return [];
   }
 
+  // Load existing index
+  const index = loadScanIndex();
   const sessionFiles: { path: string; mtime: Date }[] = [];
+  const newIndex: ScanIndex = { files: {}, lastScan: Date.now() };
 
   function searchDir(dir: string) {
     try {
@@ -132,9 +145,19 @@ export function findSessionFiles(): string[] {
           searchDir(fullPath);
         } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
           const stats = fs.statSync(fullPath);
-          // Only include files modified in the last 60 minutes and larger than 1KB
-          const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000);
-          if (stats.mtime > sixtyMinutesAgo && stats.size > 1000) {
+          const mtime = stats.mtime.getTime();
+          const size = stats.size;
+
+          // Update new index
+          newIndex.files[fullPath] = { mtime, size };
+
+          // Check if file has changed since last scan
+          const cached = index.files[fullPath];
+          const hasChanged = !cached || cached.mtime !== mtime || cached.size !== size;
+
+          // Only include files that changed AND are recent AND larger than 1KB
+          const sixtyMinutesAgo = Date.now() - 60 * 60 * 1000;
+          if (hasChanged && mtime > sixtyMinutesAgo && size > 1000) {
             sessionFiles.push({ path: fullPath, mtime: stats.mtime });
           }
         }
@@ -145,6 +168,9 @@ export function findSessionFiles(): string[] {
   }
 
   searchDir(claudeDir);
+
+  // Save updated index
+  saveScanIndex(newIndex);
 
   // Sort by modification time, newest first
   sessionFiles.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
@@ -181,4 +207,33 @@ export function getTodayMessages(messages: ClaudeMessage[]): ClaudeMessage[] {
     if (!msg.timestamp) return true; // Include messages without timestamp
     return msg.timestamp >= todayISO;
   });
+}
+
+const INDEX_FILE = ".claude-scan-index.json";
+
+function getIndexPath(): string {
+  return path.join(os.homedir(), ".claude", INDEX_FILE);
+}
+
+export function loadScanIndex(): ScanIndex {
+  try {
+    const indexPath = getIndexPath();
+    if (fs.existsSync(indexPath)) {
+      const content = fs.readFileSync(indexPath, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch {
+    // Ignore errors, return empty index
+  }
+  return { files: {}, lastScan: 0 };
+}
+
+export function saveScanIndex(index: ScanIndex): void {
+  try {
+    const indexPath = getIndexPath();
+    index.lastScan = Date.now();
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+  } catch {
+    // Ignore errors
+  }
 }
