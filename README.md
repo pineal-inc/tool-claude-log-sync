@@ -1,73 +1,109 @@
 # Claude Log Sync
 
-CLI tool to export Claude Code conversations to Markdown files.
+Claude Codeの会話をMarkdownファイルにエクスポートするCLIツール。
 
-## Installation
+## インストール
 
 ```bash
-# Clone and install
+# クローンしてインストール
 git clone https://github.com/pineal-inc/claude-log-sync.git
 cd claude-log-sync
 npm install
 npm run build
 
-# Or install globally
+# グローバルインストール
 npm install -g .
 ```
 
-## Usage
+## 使い方
 
 ```bash
-# Basic usage
+# 基本的な使い方
 claude-log-sync ~/logs/claude
 
-# With specific project
+# 特定のプロジェクトを指定
 claude-log-sync ~/logs/claude --project ~/.claude/projects/my-project
 
-# Without auto git commit
+# 自動gitコミットを無効化
 claude-log-sync ~/logs/claude --no-git
 ```
 
-### Options
+### オプション
 
-| Option | Description |
+| オプション | 説明 |
 |--------|-------------|
-| `-o, --output <path>` | Output directory for markdown files |
-| `-p, --project <path>` | Path to specific Claude Code project directory |
-| `--no-git` | Disable automatic git commit after sync |
-| `-h, --help` | Show help message |
+| `-o, --output <path>` | Markdownファイルの出力先ディレクトリ |
+| `-p, --project <path>` | 特定のClaude Codeプロジェクトへのパス |
+| `--no-git` | 同期後の自動gitコミットを無効化 |
+| `-h, --help` | ヘルプメッセージを表示 |
 
-## How It Works
+## 仕組み
 
-1. Monitors `~/.claude/projects/` for active session files
-2. Parses JSONL session files to extract user and assistant messages
-3. Filters out system messages and noise
-4. Saves conversations as daily markdown files (e.g., `2026年1月14日.md`)
-5. Optionally commits changes to git
+1. `~/.claude/projects/` 配下のアクティブなセッションファイルを監視
+2. JSONLセッションファイルを解析し、ユーザーとアシスタントのメッセージを抽出
+3. システムメッセージやノイズをフィルタリング
+4. 会話を日付別のMarkdownファイルとして保存（例: `2026年1月14日.md`）
+5. オプションでgitにコミット
 
-## Output Format
+### インクリメンタルインデックス
+
+ファイル数が増えても効率的にスキャンできるよう、インデックス機能を搭載:
+
+- `~/.claude/.claude-scan-index.json` にファイルのmtime/sizeを記録
+- 前回スキャン時から変更がないファイルはスキップ
+- ファイル数が数千になっても高速に動作
+
+## 出力形式
 
 ```markdown
 # 2026年1月14日 Claudeとの会話
 
-**ユーザー**: Hello, Claude!
+**ユーザー**: こんにちは、Claude!
 
-**Claude**: Hello! How can I help you today?
+**Claude**: こんにちは！何かお手伝いできることはありますか？
 ```
 
-## Automation
+## 自動実行
 
-You can set up a cron job or launchd to run this periodically:
+launchdを使って定期実行できます:
+
+```xml
+<!-- ~/Library/LaunchAgents/com.pineal.claude-log-sync.plist -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pineal.claude-log-sync</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/path/to/claude-log-sync/dist/index.js</string>
+        <string>/path/to/output</string>
+        <string>--no-git</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>60</integer>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+```
 
 ```bash
-# Run every minute (crontab -e)
-* * * * * /path/to/claude-log-sync ~/logs/claude
+# launchdに登録
+launchctl load ~/Library/LaunchAgents/com.pineal.claude-log-sync.plist
 ```
 
-## Credits
+## クレジット
 
-Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on exporting Claude Code conversations.
+[栗林健太郎氏の記事](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync)にインスパイアされて作成。
 
-## License
+## ライセンス
 
 MIT
